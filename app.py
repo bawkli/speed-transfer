@@ -1189,7 +1189,7 @@ if __name__ == '__main__':
     print("=" * 60)
     
     try:
-        socketio.run(app, debug=False, host='0.0.0.0', port=80, log_output=False)
+        socketio.run(app, debug=False, host='0.0.0.0', port=5000, log_output=False)
     except KeyboardInterrupt:
         print("\n👋 Server stopped by user")
     except Exception as e:
