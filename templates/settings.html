@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Speed Transfer</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header-content {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .back-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .back-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+        
+        .settings-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            padding: 30px;
+            margin-bottom: 20px;
+            animation: slideUp 0.5s ease;
+        }
+        
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .card-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #050505;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f2f5;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .profile-section {
+            display: flex;
+            gap: 30px;
+            align-items: flex-start;
+            margin-bottom: 25px;
+        }
+        
+        .profile-photo-container {
+            text-align: center;
+        }
+        
+        .profile-photo {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 48px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+            margin: 0 auto 15px;
+        }
+        
+        .profile-photo:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        
+        .profile-photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .profile-photo .overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+        
+        .profile-photo:hover .overlay {
+            opacity: 1;
+        }
+        
+        .change-photo-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .change-photo-btn:hover {
+            background: #5568d3;
+        }
+        
+        .profile-info {
+            flex: 1;
+        }
+        
+        .info-row {
+            margin-bottom: 15px;
+        }
+        
+        .info-label {
+            font-size: 13px;
+            color: #65676b;
+            margin-bottom: 5px;
+        }
+        
+        .info-value {
+            font-size: 16px;
+            color: #050505;
+            font-weight: 600;
+        }
+        
+        .user-id-badge {
+            display: inline-block;
+            background: #e7f3ff;
+            color: #667eea;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-family: 'Courier New', monospace;
+            font-weight: 700;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e1e8ed;
+            border-radius: 10px;
+            font-size: 15px;
+            transition: all 0.3s;
+            background: #f8f9fa;
+            font-family: inherit;
+        }
+        
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        .form-group input:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        }
+        
+        .form-group input[readonly] {
+            background: #e9ecef;
+            cursor: not-allowed;
+        }
+        
+        .form-hint {
+            font-size: 12px;
+            color: #65676b;
+            margin-top: 5px;
+            line-height: 1.6;
+        }
+        
+        .settings-item {
+            padding: 15px 0;
+            border-bottom: 1px solid #f0f2f5;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .settings-item:last-child {
+            border-bottom: none;
+        }
+        
+        .settings-label {
+            font-size: 15px;
+            color: #050505;
+            font-weight: 500;
+        }
+        
+        .settings-description {
+            font-size: 13px;
+            color: #65676b;
+            margin-top: 3px;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 28px;
+        }
+        
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background-color: #ccc;
+            transition: 0.4s;
+            border-radius: 28px;
+        }
+        
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: 0.4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .slider {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        input:checked + .slider:before {
+            transform: translateX(22px);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-danger {
+            background: #ff4444;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+            margin-top: 10px;
+        }
+        
+        .btn-danger:hover {
+            background: #cc0000;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(255, 68, 68, 0.4);
+        }
+        
+        .message {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+        }
+        
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .danger-zone {
+            background: #fff5f5;
+            border: 2px solid #ff4444;
+            border-radius: 12px;
+            padding: 20px;
+        }
+        
+        .danger-zone h3 {
+            color: #ff4444;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .danger-zone p {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+        
+        .warning-box {
+            background: #fff5f5;
+            border: 2px solid #ff4444;
+            border-left: 4px solid #ff4444;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .warning-box p {
+            color: #666;
+            font-size: 13px;
+            line-height: 1.6;
+            margin: 0;
+        }
+        
+        .warning-box strong {
+            color: #ff4444;
+        }
+        
+        .warning-box ul {
+            margin: 10px 0 0 20px;
+            color: #666;
+            font-size: 13px;
+            line-height: 1.8;
+        }
+        
+        input[type="file"] {
+            display: none;
+        }
+        
+        .theme-selector {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .theme-option {
+            padding: 20px;
+            border: 2px solid #e4e6eb;
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .theme-option:hover {
+            border-color: #667eea;
+            background: #f8f9fa;
+        }
+        
+        .theme-option.active {
+            border-color: #667eea;
+            background: #e7f3ff;
+        }
+        
+        .theme-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        
+        .theme-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #050505;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <h1>⚙️ Settings</h1>
+            <button class="back-btn" onclick="window.location.href='/chat'">← Back to Chat</button>
+        </div>
+    </div>
+    
+    <div class="container">
+        <!-- Profile Settings -->
+        <div class="settings-card">
+            <h2 class="card-title">👤 Profile Information</h2>
+            
+            <div class="success-message message" id="profileSuccess"></div>
+            <div class="error-message message" id="profileError"></div>
+            
+            <form id="profileForm" enctype="multipart/form-data">
+                <div class="profile-section">
+                    <div class="profile-photo-container">
+                        <div class="profile-photo" onclick="document.getElementById('newProfilePic').click()">
+                            {% if user_data.profile_pic %}
+                            <img src="{{ user_data.profile_pic }}" alt="Profile">
+                            {% else %}
+                            <span>{{ user_data.user_id[:3] }}</span>
+                            {% endif %}
+                            <div class="overlay">Change Photo</div>
+                        </div>
+                        <input type="file" id="newProfilePic" name="profile_pic" accept="image/*" onchange="previewNewPhoto(event)">
+                        <button type="button" class="change-photo-btn" onclick="document.getElementById('newProfilePic').click()">
+                            📷 Change Photo
+                        </button>
+                    </div>
+                    
+                    <div class="profile-info">
+                        <div class="info-row">
+                            <div class="info-label">User ID</div>
+                            <div class="info-value">
+                                <span class="user-id-badge">{{ user_data.user_id }}</span>
+                            </div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">Member Since</div>
+                            <div class="info-value">{{ user_data.created_at[:10] }}</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">Account Status</div>
+                            <div class="info-value" style="color: #28a745;">● Active</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" value="{{ user_data.email }}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="bio">Bio</label>
+                    <textarea id="bio" name="bio" placeholder="Tell something about yourself...">{{ user_data.bio }}</textarea>
+                </div>
+                
+                <button type="submit" class="btn-primary">💾 Save Changes</button>
+            </form>
+        </div>
+        
+        <!-- Change User ID -->
+        <div class="settings-card">
+            <h2 class="card-title">🆔 Change User ID</h2>
+            
+            <div class="success-message message" id="userIdSuccess"></div>
+            <div class="error-message message" id="userIdError"></div>
+            
+            <form id="userIdForm">
+                <div class="form-group">
+                    <label for="currentUserId">Current User ID</label>
+                    <input type="text" id="currentUserId" value="{{ user_data.user_id }}" readonly>
+                </div>
+                
+                <div class="form-group">
+                    <label for="newUserId">New User ID</label>
+                    <input type="text" id="newUserId" placeholder="Enter new unique User ID" required minlength="8" maxlength="30" pattern="[A-Za-z0-9_-]+">
+                    <div class="form-hint">
+                        • 8-30 characters<br>
+                        • Only letters, numbers, dash (-) and underscore (_)<br>
+                        • Must be unique across all users
+                    </div>
+                </div>
+                
+                <div class="warning-box">
+                    <p>
+                        <strong>⚠️ Important:</strong> Changing your User ID will affect:
+                    </p>
+                    <ul>
+                        <li>You'll need to use the new User ID for login</li>
+                        <li>Others will see your new User ID</li>
+                        <li>Your old User ID will become available for others</li>
+                        <li>This action can be done again if needed</li>
+                    </ul>
+                </div>
+                
+                <button type="submit" class="btn-primary">🔄 Change User ID</button>
+            </form>
+        </div>
+        
+        <!-- Appearance -->
+        <div class="settings-card">
+            <h2 class="card-title">🎨 Appearance</h2>
+            
+            <div class="settings-item">
+                <div>
+                    <div class="settings-label">Theme</div>
+                    <div class="settings-description">Choose your preferred theme</div>
+                </div>
+            </div>
+            
+            <div class="theme-selector">
+                <div class="theme-option active" onclick="setTheme('light')">
+                    <div class="theme-icon">☀️</div>
+                    <div class="theme-name">Light</div>
+                </div>
+                <div class="theme-option" onclick="setTheme('dark')">
+                    <div class="theme-icon">🌙</div>
+                    <div class="theme-name">Dark</div>
+                </div>
+                <div class="theme-option" onclick="setTheme('system')">
+                    <div class="theme-icon">💻</div>
+                    <div class="theme-name">System</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Notifications -->
+        <div class="settings-card">
+            <h2 class="card-title">🔔 Notifications</h2>
+            
+            <div class="settings-item">
+                <div>
+                    <div class="settings-label">Message Notifications</div>
+                    <div class="settings-description">Get notified when you receive messages</div>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" checked onchange="saveSettings()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            
+            <div class="settings-item">
+                <div>
+                    <div class="settings-label">Sound</div>
+                    <div class="settings-description">Play sound for notifications</div>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" checked onchange="saveSettings()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            
+            <div class="settings-item">
+                <div>
+                    <div class="settings-label">Group Mentions</div>
+                    <div class="settings-description">Notify when someone mentions you in groups</div>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" checked onchange="saveSettings()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+        
+        <!-- Privacy & Security -->
+        <div class="settings-card">
+            <h2 class="card-title">🔒 Privacy & Security</h2>
+            
+            <div class="settings-item">
+                <div>
+                    <div class="settings-label">Show Online Status</div>
+                    <div class="settings-description">Let others see when you're online</div>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" checked onchange="saveSettings()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            
+            <div class="settings-item">
+                <div>
+                    <div class="settings-label">Read Receipts</div>
+                    <div class="settings-description">Show when you've read messages</div>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" checked onchange="saveSettings()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+        
+        <!-- Change Password -->
+        <div class="settings-card">
+            <h2 class="card-title">🔑 Change Password</h2>
+            
+            <div class="success-message message" id="passwordSuccess"></div>
+            <div class="error-message message" id="passwordError"></div>
+            
+            <form id="passwordForm">
+                <div class="form-group">
+                    <label for="oldPassword">Current Password</label>
+                    <input type="password" id="oldPassword" placeholder="Enter current password" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="newPassword">New Password</label>
+                    <input type="password" id="newPassword" placeholder="Enter new password (min 6 characters)" required minlength="6">
+                </div>
+                
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm New Password</label>
+                    <input type="password" id="confirmPassword" placeholder="Re-enter new password" required minlength="6">
+                </div>
+                
+                <button type="submit" class="btn-primary">🔄 Update Password</button>
+            </form>
+        </div>
+        
+        <!-- Danger Zone -->
+        <div class="settings-card">
+            <h2 class="card-title">⚠️ Danger Zone</h2>
+            
+            <div class="danger-zone">
+                <h3>🗑️ Delete Account</h3>
+                <p>
+                    <strong>Warning:</strong> Once you delete your account, there is no going back. 
+                    All your messages, groups, and data will be permanently deleted.
+                </p>
+                <button class="btn-danger" onclick="deleteAccount()">
+                    Delete My Account
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script>
+        const socket = io();
+        const currentUser = "{{ session.get('username', '') }}";
+        
+        // Force logout detection
+        socket.on('force_logout', (data) => {
+            if (data.username === currentUser) {
+                alert(`⚠️ ${data.reason}\n\nYou will be logged out now.`);
+                window.location.href = '/logout';
+            }
+        });
+        
+        function previewNewPhoto(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const photoContainer = document.querySelector('.profile-photo');
+                    photoContainer.innerHTML = `<img src="${e.target.result}" alt="Profile"><div class="overlay">Change Photo</div>`;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+        
+        // Profile Form
+        document.getElementById('profileForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(document.getElementById('profileForm'));
+            
+            const response = await fetch('/update_profile', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            const successMsg = document.getElementById('profileSuccess');
+            const errorMsg = document.getElementById('profileError');
+            
+            successMsg.style.display = 'none';
+            errorMsg.style.display = 'none';
+            
+            if (data.success) {
+                successMsg.textContent = '✅ Profile updated successfully!';
+                successMsg.style.display = 'block';
+                setTimeout(() => successMsg.style.display = 'none', 3000);
+            } else {
+                errorMsg.textContent = '❌ Failed to update profile';
+                errorMsg.style.display = 'block';
+            }
+        });
+        
+        // Change User ID Form
+        document.getElementById('userIdForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const newUserId = document.getElementById('newUserId').value.trim();
+            
+            if (!confirm(`⚠️ Change User ID to "${newUserId}"?\n\nYou'll need to use this new ID for login.`)) {
+                return;
+            }
+            
+            const successMsg = document.getElementById('userIdSuccess');
+            const errorMsg = document.getElementById('userIdError');
+            
+            successMsg.style.display = 'none';
+            errorMsg.style.display = 'none';
+            
+            try {
+                const response = await fetch('/change_user_id', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({new_user_id: newUserId})
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    successMsg.textContent = `✅ User ID changed successfully to: ${data.new_user_id}`;
+                    successMsg.style.display = 'block';
+                    document.getElementById('currentUserId').value = data.new_user_id;
+                    document.getElementById('newUserId').value = '';
+                    
+                    // Update badge display
+                    document.querySelector('.user-id-badge').textContent = data.new_user_id;
+                    
+                    // Reload after 2 seconds
+                    setTimeout(() => location.reload(), 2000);
+                } else {
+                    errorMsg.textContent = data.message || '❌ Failed to change User ID';
+                    errorMsg.style.display = 'block';
+                }
+            } catch (error) {
+                errorMsg.textContent = '❌ Network error. Please try again.';
+                errorMsg.style.display = 'block';
+            }
+        });
+        
+        // Password Form
+        document.getElementById('passwordForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const oldPassword = document.getElementById('oldPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            const successMsg = document.getElementById('passwordSuccess');
+            const errorMsg = document.getElementById('passwordError');
+            
+            successMsg.style.display = 'none';
+            errorMsg.style.display = 'none';
+            
+            if (newPassword !== confirmPassword) {
+                errorMsg.textContent = '❌ New passwords do not match';
+                errorMsg.style.display = 'block';
+                return;
+            }
+            
+            if (newPassword.length < 6) {
+                errorMsg.textContent = '❌ Password must be at least 6 characters';
+                errorMsg.style.display = 'block';
+                return;
+            }
+            
+            const response = await fetch('/change_password', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({old_password: oldPassword, new_password: newPassword})
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                successMsg.textContent = '✅ Password changed successfully!';
+                successMsg.style.display = 'block';
+                document.getElementById('passwordForm').reset();
+                setTimeout(() => successMsg.style.display = 'none', 3000);
+            } else {
+                errorMsg.textContent = data.message || '❌ Failed to change password';
+                errorMsg.style.display = 'block';
+            }
+        });
+        
+        function setTheme(theme) {
+            document.querySelectorAll('.theme-option').forEach(option => {
+                option.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+            localStorage.setItem('theme', theme);
+        }
+        
+        function saveSettings() {
+            console.log('Settings saved');
+        }
+        
+        async function deleteAccount() {
+            const confirm1 = confirm('⚠️ Are you absolutely sure you want to delete your account?');
+            if (!confirm1) return;
+            
+            const confirm2 = confirm('🚨 This action CANNOT be undone. All your data will be permanently deleted. Continue?');
+            if (!confirm2) return;
+            
+            const response = await fetch('/delete_account', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                alert('✅ Account deleted successfully');
+                window.location.href = '/login';
+            }
+        }
+        
+        // Load saved theme
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme) {
+            document.querySelectorAll('.theme-option').forEach((option, index) => {
+                option.classList.remove('active');
+                if ((savedTheme === 'light' && index === 0) ||
+                    (savedTheme === 'dark' && index === 1) ||
+                    (savedTheme === 'system' && index === 2)) {
+                    option.classList.add('active');
+                }
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Speed Transfer</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 25px 40px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .btn-light {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            backdrop-filter: blur(10px);
+        }
+        
+        .btn-light:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 40px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+        
+        .stat-card {
+            background: rgba(255,255,255,0.08);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            animation: slideUp 0.5s ease;
+        }
+        
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .stat-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-icon.users { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .stat-icon.active { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
+        .stat-icon.blocked { background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%); }
+        .stat-icon.groups { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .stat-icon.messages { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        
+        .stat-value {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: rgba(255,255,255,0.6);
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .tab {
+            padding: 14px 28px;
+            background: rgba(255,255,255,0.08);
+            border: 2px solid transparent;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            color: rgba(255,255,255,0.7);
+        }
+        
+        .tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .tab:hover:not(.active) {
+            background: rgba(255,255,255,0.12);
+        }
+        
+        .content-section {
+            display: none;
+        }
+        
+        .content-section.active {
+            display: block;
+        }
+        
+        .table-container {
+            background: rgba(255,255,255,0.08);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        th {
+            padding: 20px 25px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        tbody tr {
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.2s;
+        }
+        
+        tbody tr:hover {
+            background: rgba(255,255,255,0.05);
+        }
+        
+        td {
+            padding: 20px 25px;
+            font-size: 14px;
+        }
+        
+        .user-cell {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .user-avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 18px;
+            overflow: hidden;
+        }
+        
+        .user-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .badge {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .badge-active {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+        
+        .badge-blocked {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            color: white;
+        }
+        
+        .badge-temp-ban {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        
+        .action-btns {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .btn-sm {
+            padding: 8px 14px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .btn-activity {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-block {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            color: white;
+        }
+        
+        .btn-unblock {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+        
+        .btn-delete {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            color: white;
+        }
+        
+        .btn-password {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+        
+        .btn-timeban {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        
+        .btn-sm:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(5px);
+            overflow-y: auto;
+        }
+        
+        .modal.show {
+            display: flex;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .modal-content {
+            background: linear-gradient(180deg, #1a1f3a 0%, #0f1423 100%);
+            border-radius: 20px;
+            padding: 35px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            border: 2px solid rgba(102, 126, 234, 0.3);
+            animation: slideUp 0.3s ease;
+            margin: 20px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-content.large {
+            max-width: 900px;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+        
+        .modal-header h2 {
+            font-size: 24px;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .close-modal {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 24px;
+            color: white;
+            transition: all 0.3s;
+        }
+        
+        .close-modal:hover {
+            background: rgba(255, 68, 68, 0.3);
+            transform: rotate(90deg);
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: white;
+            font-size: 14px;
+        }
+        
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 14px 18px;
+            border: 2px solid rgba(102, 126, 234, 0.3);
+            border-radius: 12px;
+            background: rgba(255,255,255,0.08);
+            color: white;
+            font-size: 15px;
+            transition: all 0.3s;
+            font-family: inherit;
+        }
+        
+        .form-group textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+        
+        .form-group input::placeholder, .form-group textarea::placeholder {
+            color: rgba(255,255,255,0.4);
+        }
+        
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            background: rgba(255,255,255,0.12);
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.2);
+        }
+        
+        .form-group select option {
+            background: #1a1f3a;
+            color: white;
+        }
+        
+        .btn-submit {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+        
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
+        }
+        
+        .info-text {
+            font-size: 13px;
+            color: rgba(255,255,255,0.6);
+            margin-top: 10px;
+            padding: 12px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            border-left: 3px solid #667eea;
+        }
+        
+        .ban-time {
+            font-size: 12px;
+            color: rgba(255,255,255,0.6);
+            margin-top: 5px;
+        }
+        
+        .message {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+        }
+        
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .messaging-container {
+            padding: 40px;
+        }
+        
+        .messaging-header {
+            color: white;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 24px;
+        }
+        
+        .info-box {
+            background: rgba(255,255,255,0.05);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .info-row {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .info-item {
+            background: rgba(255,255,255,0.03);
+            padding: 15px;
+            border-radius: 10px;
+        }
+        
+        .info-label {
+            color: rgba(255,255,255,0.6);
+            font-size: 13px;
+            margin-bottom: 5px;
+        }
+        
+        .info-value {
+            color: white;
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .activity-item {
+            padding: 12px;
+            margin-bottom: 10px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+        }
+        
+        .activity-content {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+        
+        .activity-icon {
+            font-size: 20px;
+        }
+        
+        .activity-details {
+            flex: 1;
+        }
+        
+        .activity-title {
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .activity-desc {
+            color: rgba(255,255,255,0.6);
+            font-size: 12px;
+            margin-top: 3px;
+        }
+        
+        .activity-time {
+            text-align: right;
+            font-size: 11px;
+            color: rgba(255,255,255,0.5);
+        }
+        
+        .activity-device {
+            color: rgba(255,255,255,0.4);
+            font-size: 11px;
+            margin-top: 3px;
+        }
+        
+        .chat-stats {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .chat-stats:last-child {
+            border-bottom: none;
+        }
+        
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.05);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>🛡️ Admin Dashboard</h1>
+            <p style="font-size: 14px; opacity: 0.9; margin-top: 5px;">Speed Transfer Management Panel</p>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-light" onclick="window.location.reload()">🔄 Refresh</button>
+            <button class="btn btn-light" onclick="window.location.href='/logout'">🚪 Logout</button>
+        </div>
+    </div>
+    
+    <div class="container">
+        <!-- Statistics -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon users">👥</div>
+                <div class="stat-value">{{ stats.total_users }}</div>
+                <div class="stat-label">Total Users</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon active">✅</div>
+                <div class="stat-value">{{ stats.active_users }}</div>
+                <div class="stat-label">Active Users</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon blocked">🚫</div>
+                <div class="stat-value">{{ stats.blocked_users }}</div>
+                <div class="stat-label">Blocked Users</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon groups">👨‍👩‍👧‍👦</div>
+                <div class="stat-value">{{ stats.total_groups }}</div>
+                <div class="stat-label">Total Groups</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon messages">💬</div>
+                <div class="stat-value">{{ stats.total_messages }}</div>
+                <div class="stat-label">Total Messages</div>
+            </div>
+        </div>
+        
+        <!-- Tabs -->
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('users')">👥 Users Management</div>
+            <div class="tab" onclick="switchTab('groups')">👨‍👩‍👧‍👦 Groups</div>
+            <div class="tab" onclick="switchTab('messaging')">💬 Send Messages</div>
+        </div>
+        
+        <!-- Users Section -->
+        <div class="content-section active" id="users-section">
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>User ID</th>
+                            <th>Email</th>
+                            <th>Device</th>
+                            <th>Messages</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr id="user-{{ user.username }}">
+                            <td>
+                                <div class="user-cell">
+                                    <div class="user-avatar">
+                                        {% if user.data.profile_pic %}
+                                        <img src="{{ user.data.profile_pic }}" alt="{{ user.username }}">
+                                        {% else %}
+                                        {{ user.username[0].upper() }}
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <div style="font-weight: 600;">{{ user.username }}</div>
+                                        <div style="font-size: 12px; color: rgba(255,255,255,0.5);">{{ user.data.bio or 'No bio' }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><code style="background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 6px;">{{ user.data.user_id }}</code></td>
+                            <td>{{ user.data.email }}</td>
+                            <td>{{ user.data.device_info }}</td>
+                            <td>
+                                <div style="display: flex; gap: 10px;">
+                                    <span style="color: #4facfe;">📤 {{ user.data.messages_sent }}</span>
+                                    <span style="color: #38ef7d;">📥 {{ user.data.messages_received }}</span>
+                                </div>
+                            </td>
+                            <td>
+                                {% if user.data.status == 'active' %}
+                                <span class="badge badge-active">ACTIVE</span>
+                                {% elif user.data.get('ban_type') == 'temporary' %}
+                                <span class="badge badge-temp-ban">TEMP BAN</span>
+                                {% if user.data.get('ban_until') %}
+                                <div class="ban-time">Until: {{ user.data.ban_until[:16] }}</div>
+                                {% endif %}
+                                {% else %}
+                                <span class="badge badge-blocked">BLOCKED</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="action-btns">
+                                    <button class="btn-sm btn-activity" onclick="viewUserActivity('{{ user.username }}')">📊 Activity</button>
+                                    {% if user.data.status == 'active' %}
+                                    <button class="btn-sm btn-block" onclick="blockUser('{{ user.username }}')">🚫 Block</button>
+                                    <button class="btn-sm btn-timeban" onclick="openTimeBanModal('{{ user.username }}')">⏱️ Ban</button>
+                                    {% else %}
+                                    <button class="btn-sm btn-unblock" onclick="unblockUser('{{ user.username }}')">✅ Unblock</button>
+                                    {% endif %}
+                                    <button class="btn-sm btn-password" onclick="openPasswordModal('{{ user.username }}')">🔑</button>
+                                    <button class="btn-sm btn-delete" onclick="deleteUser('{{ user.username }}')">🗑️</button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Groups Section -->
+        <div class="content-section" id="groups-section">
+            <div class="table-container">
+                {% if groups %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Group Name</th>
+                            <th>Creator</th>
+                            <th>Members</th>
+                            <th>Created</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for group_id, group_data in groups.items() %}
+                        <tr>
+                            <td>
+                                <div style="font-weight: 600;">{{ group_data.name }}</div>
+                            </td>
+                            <td>{{ group_data.creator }}</td>
+                            <td>{{ group_data.members|length }} members</td>
+                            <td>{{ group_data.created_at[:10] }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div style="text-align: center; padding: 60px; color: rgba(255,255,255,0.5);">
+                    <div style="font-size: 60px; margin-bottom: 20px; opacity: 0.3;">👥</div>
+                    <h3>No Groups Yet</h3>
+                    <p>Users haven't created any groups</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Messaging Section -->
+        <div class="content-section" id="messaging-section">
+            <div class="table-container">
+                <div class="messaging-container">
+                    <h2 class="messaging-header">💬 Send Messages to Users</h2>
+                    
+                    <div class="success-message message" id="messageSuccess"></div>
+                    <div class="error-message message" id="messageError"></div>
+                    
+                    <form id="adminMessageForm">
+                        <div class="form-group">
+                            <label>Select Recipient</label>
+                            <select id="messageRecipient" required>
+                                <option value="">-- Choose Recipient --</option>
+                                <option value="all" style="background: #667eea; font-weight: 700;">📢 BROADCAST TO ALL USERS</option>
+                                <optgroup label="Individual Users" style="background: #1a1f3a;">
+                                    {% for user in messaging_users %}
+                                    <option value="{{ user.username }}">{{ user.username }} ({{ user.data.user_id }})</option>
+                                    {% endfor %}
+                                </optgroup>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Message</label>
+                            <textarea id="adminMessageText" placeholder="Type your message here..." required></textarea>
+                        </div>
+                        
+                        <div class="info-text">
+                            💡 <strong>Tip:</strong> Select "BROADCAST TO ALL USERS" to send message to everyone, or choose a specific user to send privately.
+                        </div>
+                        
+                        <button type="submit" class="btn-submit" style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+                            <span>📤</span>
+                            <span>Send Message</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Time Ban Modal -->
+    <div class="modal" id="timeBanModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>⏱️ Temporary Ban User</h2>
+                <button class="close-modal" onclick="closeTimeBanModal()">×</button>
+            </div>
+            
+            <form id="timeBanForm">
+                <input type="hidden" id="timeBanUsername">
+                
+                <div class="form-group">
+                    <label>Ban Duration</label>
+                    <select id="banDuration" required>
+                        <option value="">Select duration</option>
+                        <option value="1">1 Hour</option>
+                        <option value="3">3 Hours</option>
+                        <option value="6">6 Hours</option>
+                        <option value="12">12 Hours</option>
+                        <option value="24">1 Day</option>
+                        <option value="72">3 Days</option>
+                        <option value="168">1 Week</option>
+                        <option value="720">1 Month</option>
+                    </select>
+                </div>
+                
+                <div class="info-text">
+                    ⚠️ User will be automatically unblocked after the ban period expires.
+                </div>
+                
+                <button type="submit" class="btn-submit">🚫 Apply Time Ban</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Change Password Modal -->
+    <div class="modal" id="passwordModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🔑 Change User Password</h2>
+                <button class="close-modal" onclick="closePasswordModal()">×</button>
+            </div>
+            
+            <form id="passwordForm">
+                <input type="hidden" id="passwordUsername">
+                
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="displayUsername" readonly style="background: rgba(255,255,255,0.05);">
+                </div>
+                
+                <div class="form-group">
+                    <label>New Password</label>
+                    <input type="password" id="newPassword" placeholder="Enter new password (min 6 characters)" required minlength="6">
+                </div>
+                
+                <div class="form-group">
+                    <label>Confirm Password</label>
+                    <input type="password" id="confirmPassword" placeholder="Re-enter new password" required minlength="6">
+                </div>
+                
+                <div class="info-text">
+                    💡 The user will need to use this new password to login.
+                </div>
+                
+                <button type="submit" class="btn-submit">🔄 Change Password</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- User Activity Modal -->
+    <div class="modal" id="activityModal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2>📊 User Activity</h2>
+                <button class="close-modal" onclick="closeActivityModal()">×</button>
+            </div>
+            
+            <div id="activityContent">
+                <div style="text-align: center; padding: 40px;">
+                    <div style="font-size: 40px; margin-bottom: 15px;">⏳</div>
+                    <p style="color: rgba(255,255,255,0.6);">Loading activity data...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const socket = io();
+        
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(`${tab}-section`).classList.add('active');
+        }
+        
+        async function blockUser(username) {
+            if (!confirm(`🚫 Permanently block user "${username}"?`)) return;
+            
+            const response = await fetch('/admin/block_user', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username})
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                alert('✅ User blocked successfully!');
+                location.reload();
+            } else {
+                alert('❌ Failed to block user');
+            }
+        }
+        
+        async function unblockUser(username) {
+            if (!confirm(`✅ Unblock user "${username}"?`)) return;
+            
+            const response = await fetch('/admin/unblock_user', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username})
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                alert('✅ User unblocked successfully!');
+                location.reload();
+            } else {
+                alert('❌ Failed to unblock user');
+            }
+        }
+        
+        async function deleteUser(username) {
+            if (!confirm(`⚠️ PERMANENTLY DELETE user "${username}"?\n\nThis action CANNOT be undone!`)) return;
+            
+            const confirm2 = confirm(`🚨 Are you absolutely sure?\n\nAll data for "${username}" will be permanently deleted!`);
+            if (!confirm2) return;
+            
+            const response = await fetch('/admin/delete_user', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username})
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                alert('✅ User deleted successfully!');
+                location.reload();
+            } else {
+                alert('❌ Failed to delete user');
+            }
+        }
+        
+        // Time Ban Modal
+        function openTimeBanModal(username) {
+            document.getElementById('timeBanUsername').value = username;
+            document.getElementById('timeBanModal').classList.add('show');
+        }
+        
+        function closeTimeBanModal() {
+            document.getElementById('timeBanModal').classList.remove('show');
+            document.getElementById('timeBanForm').reset();
+        }
+        
+        document.getElementById('timeBanForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('timeBanUsername').value;
+            const hours = parseInt(document.getElementById('banDuration').value);
+            
+            const response = await fetch('/admin/time_ban_user', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username, hours})
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                alert(`✅ User "${username}" has been banned for ${hours} hour(s)!`);
+                closeTimeBanModal();
+                location.reload();
+            } else {
+                alert('❌ Failed to apply time ban');
+            }
+        });
+        
+        // Password Change Modal
+        function openPasswordModal(username) {
+            document.getElementById('passwordUsername').value = username;
+            document.getElementById('displayUsername').value = username;
+            document.getElementById('passwordModal').classList.add('show');
+        }
+        
+        function closePasswordModal() {
+            document.getElementById('passwordModal').classList.remove('show');
+            document.getElementById('passwordForm').reset();
+        }
+        
+        document.getElementById('passwordForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('passwordUsername').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            if (newPassword !== confirmPassword) {
+                alert('❌ Passwords do not match!');
+                return;
+            }
+            
+            if (newPassword.length < 6) {
+                alert('❌ Password must be at least 6 characters!');
+                return;
+            }
+            
+            const response = await fetch('/admin/change_user_password', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username, new_password: newPassword})
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                alert(`✅ Password changed successfully for "${username}"!\n\nNew password: ${newPassword}`);
+                closePasswordModal();
+            } else {
+                alert('❌ Failed to change password');
+            }
+        });
+        
+        // Admin Messaging Form
+        document.getElementById('adminMessageForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const recipient = document.getElementById('messageRecipient').value;
+            const message = document.getElementById('adminMessageText').value.trim();
+            
+            const successMsg = document.getElementById('messageSuccess');
+            const errorMsg = document.getElementById('messageError');
+            
+            successMsg.style.display = 'none';
+            errorMsg.style.display = 'none';
+            
+            if (!recipient || !message) {
+                errorMsg.textContent = 'Please select recipient and enter message';
+                errorMsg.style.display = 'block';
+                return;
+            }
+            
+            try {
+                const response = await fetch('/admin/send_message', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({recipient: recipient, message: message})
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    successMsg.textContent = `✅ ${data.message}`;
+                    successMsg.style.display = 'block';
+                    document.getElementById('adminMessageForm').reset();
+                    setTimeout(() => successMsg.style.display = 'none', 5000);
+                } else {
+                    errorMsg.textContent = `❌ ${data.message || 'Failed to send message'}`;
+                    errorMsg.style.display = 'block';
+                }
+            } catch (error) {
+                errorMsg.textContent = '❌ Network error. Please try again.';
+                errorMsg.style.display = 'block';
+            }
+        });
+        
+        // View User Activity
+        async function viewUserActivity(username) {
+            document.getElementById('activityModal').classList.add('show');
+            document.getElementById('activityContent').innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <div style="font-size: 40px; margin-bottom: 15px;">⏳</div>
+                    <p style="color: rgba(255,255,255,0.6);">Loading activity data...</p>
+                </div>
+            `;
+            
+            try {
+                const response = await fetch(`/admin/user_activity/${username}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const user = data.user;
+                    const activities = data.activities;
+                    const chatStats = data.chat_stats;
+                    
+                    let html = `
+                        <div style="margin-bottom: 30px;">
+                            <h3 style="color: white; margin-bottom: 20px; font-size: 20px;">👤 User Information</h3>
+                            <div class="info-box">
+                                <div class="info-row">
+                                    <div class="info-item">
+                                        <div class="info-label">Username</div>
+                                        <div class="info-value">${user.username}</div>
+                                    </div>
+                                    <div class="info-item">
+                                        <div class="info-label">User ID</div>
+                                        <div class="info-value">${user.user_id}</div>
+                                    </div>
+                                </div>
+                                <div class="info-row">
+                                    <div class="info-item">
+                                        <div class="info-label">Messages Sent</div>
+                                        <div class="info-value" style="color: #4facfe;">📤 ${user.messages_sent}</div>
+                                    </div>
+                                    <div class="info-item">
+                                        <div class="info-label">Messages Received</div>
+                                        <div class="info-value" style="color: #38ef7d;">📥 ${user.messages_received}</div>
+                                    </div>
+                                </div>
+                                <div class="info-row">
+                                    <div class="info-item">
+                                        <div class="info-label">Account Created</div>
+                                        <div class="info-value">${user.created_at}</div>
+                                    </div>
+                                    <div class="info-item">
+                                        <div class="info-label">Last Seen</div>
+                                        <div class="info-value">${user.last_seen}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-bottom: 30px;">
+                            <h3 style="color: white; margin-bottom: 20px; font-size: 20px;">💬 Top Chat Partners</h3>
+                            <div class="info-box">
+                                ${chatStats.length > 0 ? chatStats.map(stat => `
+                                    <div class="chat-stats">
+                                        <span style="color: white;">${stat.partner}</span>
+                                        <span style="color: #667eea; font-weight: 700;">${stat.count} messages</span>
+                                    </div>
+                                `).join('') : '<p style="color: rgba(255,255,255,0.5); text-align: center; padding: 20px;">No chat data available</p>'}
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h3 style="color: white; margin-bottom: 20px; font-size: 20px;">📋 Recent Activity (Last 100)</h3>
+                            <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 15px; max-height: 400px; overflow-y: auto;">
+                                ${activities.length > 0 ? activities.map(activity => `
+                                    <div class="activity-item" style="border-left: 3px solid ${getActivityColor(activity.type)};">
+                                        <div class="activity-content">
+                                            <span class="activity-icon">${getActivityIcon(activity.type)}</span>
+                                            <div class="activity-details">
+                                                <div class="activity-title">${getActivityLabel(activity.type)}</div>
+                                                ${activity.details ? `<div class="activity-desc">${activity.details}</div>` : ''}
+                                            </div>
+                                        </div>
+                                        <div class="activity-time">
+                                            <div>${activity.timestamp}</div>
+                                            <div class="activity-device">${activity.device}</div>
+                                            ${activity.ip ? `<div class="activity-device">IP: ${activity.ip}</div>` : ''}
+                                        </div>
+                                    </div>
+                                `).join('') : '<p style="color: rgba(255,255,255,0.5); text-align: center; padding: 40px;">No activity data available</p>'}
+                            </div>
+                        </div>
+                    `;
+                    
+                    document.getElementById('activityContent').innerHTML = html;
+                } else {
+                    document.getElementById('activityContent').innerHTML = `
+                        <div style="text-align: center; padding: 40px;">
+                            <div style="font-size: 40px; margin-bottom: 15px;">❌</div>
+                            <p style="color: rgba(255,255,255,0.6);">Failed to load activity data</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('activityContent').innerHTML = `
+                    <div style="text-align: center; padding: 40px;">
+                        <div style="font-size: 40px; margin-bottom: 15px;">❌</div>
+                        <p style="color: rgba(255,255,255,0.6);">Network error</p>
+                    </div>
+                `;
+            }
+        }
+        
+        function closeActivityModal() {
+            document.getElementById('activityModal').classList.remove('show');
+        }
+        
+        function getActivityIcon(type) {
+            const icons = {
+                'login': '🔐',
+                'logout': '🚪',
+                'online': '🟢',
+                'offline': '🔴',
+                'message_sent': '💬',
+                'profile_update': '✏️',
+                'password_change': '🔑'
+            };
+            return icons[type] || '📝';
+        }
+        
+        function getActivityLabel(type) {
+            const labels = {
+                'login': 'Logged In',
+                'logout': 'Logged Out',
+                'online': 'Came Online',
+                'offline': 'Went Offline',
+                'message_sent': 'Sent Message',
+                'profile_update': 'Updated Profile',
+                'password_change': 'Changed Password'
+            };
+            return labels[type] || type;
+        }
+        
+        function getActivityColor(type) {
+            const colors = {
+                'login': '#4facfe',
+                'logout': '#f093fb',
+                'online': '#38ef7d',
+                'offline': '#ff6b6b',
+                'message_sent': '#667eea',
+                'profile_update': '#f5576c',
+                'password_change': '#ffa500'
+            };
+            return colors[type] || '#667eea';
+        }
+        
+        // Close modals on outside click
+        document.getElementById('timeBanModal').addEventListener('click', (e) => {
+            if (e.target.id === 'timeBanModal') closeTimeBanModal();
+        });
+        
+        document.getElementById('passwordModal').addEventListener('click', (e) => {
+            if (e.target.id === 'passwordModal') closePasswordModal();
+        });
+        
+        document.getElementById('activityModal').addEventListener('click', (e) => {
+            if (e.target.id === 'activityModal') closeActivityModal();
+        });
+        
+        // Socket connection for real-time updates
+        socket.on('user_connected', (data) => {
+            console.log('✅ User connected:', data);
+        });
+        
+        socket.on('user_blocked', (data) => {
+            console.log('🚫 User blocked:', data.username);
+        });
+        
+        socket.on('user_unblocked', (data) => {
+            console.log('✅ User unblocked:', data.username);
+        });
+        
+        socket.on('user_deleted', (data) => {
+            console.log('🗑️ User deleted:', data.username);
+        });
+    </script>
+</body>
+</html>
